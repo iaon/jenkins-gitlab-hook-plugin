@@ -6,6 +6,7 @@ include Java
 
 java_import Java.hudson.model.ParametersDefinitionProperty
 java_import Java.hudson.model.StringParameterDefinition
+java_import Java.hudson.model.ChoiceParameterDefinition
 java_import Java.hudson.util.StreamTaskListener
 java_import Java.hudson.util.NullStream
 java_import Java.hudson.plugins.git.GitSCM
@@ -22,9 +23,11 @@ end
 
 module GitlabWebHook
   class Project
+    BRANCH_NAME_PARAMETER_ACCEPTED_TYPES = [StringParameterDefinition, ChoiceParameterDefinition]
+
     extend Forwardable
 
-    def_delegators :@jenkins_project, :scm, :schedulePolling, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getQuietPeriod, :getProperty, :delete, :description, :poll
+    def_delegators :@jenkins_project, :scm, :schedulePolling, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getQuietPeriod, :getProperty, :delete, :description
 
     alias_method :parametrized?, :isParameterized
     alias_method :buildable?, :isBuildable
@@ -62,8 +65,8 @@ module GitlabWebHook
         end
       end
 
-      if branch_name_param && !branch_name_param.java_kind_of?(StringParameterDefinition)
-        logger.warning("only string parameters for branch parameter are supported")
+      if branch_name_param && !BRANCH_NAME_PARAMETER_ACCEPTED_TYPES.any? { |type| branch_name_param.java_kind_of?(type) }
+        logger.warning("only string and choice parameters for branch parameter are supported")
         return nil
       end
 
@@ -73,13 +76,6 @@ module GitlabWebHook
     def get_default_parameters
       # @see jenkins.model.ParameterizedJobMixIn.getDefaultParametersValues used in hudson.model.AbstractProject
       getProperty(ParametersDefinitionProperty.java_class).getParameterDefinitions()
-    end
-
-    def has_changes?
-      # explicitly using the correct constructor to remove annoying warning
-      poll(StreamTaskListener.java_class.constructor(java.io.OutputStream).new_instance(NullStream.new)).hasChanges()
-    rescue
-      true
     end
 
     private

@@ -20,7 +20,7 @@ module GitlabWebHook
         allow(jenkins_project).to receive(:scm) { scm }
       end
 
-      [:scm, :schedulePolling, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getQuietPeriod, :getProperty, :delete, :description, :poll].each do |message|
+      [:scm, :schedulePolling, :scheduleBuild2, :fullName, :isParameterized, :isBuildable, :getQuietPeriod, :getProperty, :delete, :description].each do |message|
         it "delegates #{message}" do
           expect(jenkins_project).to receive(message)
           subject.send(message)
@@ -124,7 +124,7 @@ module GitlabWebHook
         end
 
         it 'does not match when branch parameter is not of supported type' do
-          allow(branch_name_parameter).to receive(:java_kind_of?).with(StringParameterDefinition) { false }
+          Project::BRANCH_NAME_PARAMETER_ACCEPTED_TYPES.each { |type| allow(branch_name_parameter).to receive(:java_kind_of?).with(type) { false } }
           expect(logger).to receive(:warning)
           expect(subject.matches?(details_uri, anything, anything)).not_to be
         end
@@ -242,39 +242,6 @@ module GitlabWebHook
 
         it 'matches' do
           expect(subject.matches?(details_uri, anything, anything)).to be
-        end
-      end
-    end
-
-    context "when determining if there were CSM changes" do
-      let(:poll) { double() }
-
-      before(:each) do
-        allow(jenkins_project).to receive(:scm) { scm }
-        allow(jenkins_project).to receive(:poll) { poll }
-      end
-
-      context "with changes present" do
-        before(:each) { allow(poll).to receive(:hasChanges) { true } }
-
-        it "returns true" do
-          expect(subject.has_changes?).to be
-        end
-      end
-
-      context "without changes" do
-        before(:each) { allow(poll).to receive(:hasChanges) { false } }
-
-        it "returns false" do
-          expect(subject.has_changes?).not_to be
-        end
-      end
-
-      context "with exception" do
-        before(:each) { allow(poll).to receive(:hasChanges) { raise } }
-
-        it "returns true" do
-          expect(subject.has_changes?).to be
         end
       end
     end
